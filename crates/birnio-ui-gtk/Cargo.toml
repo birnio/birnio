@@ -1,0 +1,21 @@
+[package]
+name = "birnio-ui-gtk"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+birnio-core = { path = "../birnio-core" }
+birnio-http = { path = "../birnio-http" }
+birnio-import = { path = "../birnio-import" }
+birnio-storage = { path = "../birnio-storage" }
+
+adw = { package = "libadwaita", version = "0.8" }
+anyhow = "1"
+gtk = { package = "gtk4", version = "0.10" }
+relm4 = { version = "0.10", features = ["libadwaita"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+uuid.workspace = true

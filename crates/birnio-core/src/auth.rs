@@ -1,0 +1,26 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Auth {
+    None,
+    Basic(BasicAuth),
+    Bearer(BearerAuth),
+}
+
+impl Default for Auth {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BasicAuth {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BearerAuth {
+    pub token: String,
+}
