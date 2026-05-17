@@ -268,5 +268,7 @@ jobs:
         with:
           # PAT with write access to the tap repository.
           token: ${{ secrets.HOMEBREW_TOKEN }}
-          tap: birnio/homebrew-birnio
+          # Homebrew tap name: owner/name without the "homebrew-" prefix.
+          # This corresponds to github.com/birnio/homebrew-birnio.
+          tap: birnio/birnio
           formula: birnio
