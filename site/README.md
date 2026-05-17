@@ -11,18 +11,22 @@ npm run build
 npm run preview
 ```
 
-## Cloudflare Pages
+## Cloudflare
 
-Use the Cloudflare Pages GitHub integration rather than a deploy workflow. Cloudflare
-will build production deployments from `main` and preview deployments for pull
-requests.
+Use the Cloudflare GitHub integration rather than a GitHub Actions deploy workflow.
+Cloudflare will build production deployments from `main` and preview deployments
+for pull requests.
 
 Use these settings when connecting the repository:
 
 ```text
-Root directory: site
 Build command: npm run build
-Build output directory: dist
+Deploy command: npx wrangler deploy
+Root directory: /site
+Generated token: birnio build token
+Environment variables: none
 ```
 
-The Astro `site` URL is configured as `https://birnio.dev`.
+The deploy command reads `wrangler.jsonc`, which publishes the Astro build output
+from `dist` as static assets. The Astro `site` URL is configured as
+`https://birnio.dev`.
