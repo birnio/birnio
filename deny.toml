@@ -12,8 +12,10 @@
 # ── Licence policy ────────────────────────────────────────────────────────────
 [licenses]
 # SPDX identifiers for licences that are explicitly permitted.
-# Dual-licenced crates (e.g. "MIT OR Apache-2.0") are allowed when both
-# identifiers appear in this list.
+# cargo-deny v2 uses an allowlist-only model: every licence not listed here
+# is denied by default — including unlicensed crates — so no extra fields
+# are needed. Dual-licenced crates (e.g. "MIT OR Apache-2.0") are allowed
+# when both identifiers appear in this list.
 allow = [
     "MIT",
     "Apache-2.0",
@@ -24,11 +26,7 @@ allow = [
     "Unicode-DFS-2016",
 ]
 
-# Reject crates that carry no licence information at all.
-unlicensed = "deny"
-
 # Minimum confidence score (0.0–1.0) for automated licence-text detection.
-# 0.8 is the cargo-deny default and is appropriate for most crates.
 confidence-threshold = 0.8
 
 # ── Vulnerability advisories ──────────────────────────────────────────────────
