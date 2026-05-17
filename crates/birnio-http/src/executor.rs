@@ -1,11 +1,11 @@
-use std::{future::Future, time::Instant};
+use std::time::Instant;
 
 use birnio_core::{Request, Response};
 
 use crate::{HttpClient, HttpResult, request_builder, response_parser};
 
 pub trait HttpExecutor {
-    fn execute(&self, request: &Request) -> impl Future<Output = HttpResult<Response>> + Send;
+    async fn execute(&self, request: &Request) -> HttpResult<Response>;
 }
 
 #[derive(Clone)]
@@ -20,14 +20,12 @@ impl ReqwestExecutor {
 }
 
 impl HttpExecutor for ReqwestExecutor {
-    fn execute(&self, request: &Request) -> impl Future<Output = HttpResult<Response>> + Send {
-        async move {
-            let reqwest_request = request_builder::build(self.client.inner(), request)?;
-            let started_at = Instant::now();
-            let response = self.client.inner().execute(reqwest_request).await?;
+    async fn execute(&self, request: &Request) -> HttpResult<Response> {
+        let reqwest_request = request_builder::build(self.client.inner(), request)?;
+        let started_at = Instant::now();
+        let response = self.client.inner().execute(reqwest_request).await?;
 
-            response_parser::parse(response, started_at.elapsed()).await
-        }
+        response_parser::parse(response, started_at.elapsed()).await
     }
 }
 
