@@ -8,7 +8,7 @@ repository.workspace = true
 [dependencies]
 birnio-core = { path = "../birnio-core", version = "0.1" }
 serde_json.workspace = true
-sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "migrate", "uuid", "json"] }
+sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio", "macros", "migrate", "uuid", "json"] }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["rt", "macros"] }
 uuid.workspace = true
