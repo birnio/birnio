@@ -8,7 +8,7 @@
 #
 # Required secrets:
 #   WINGET_TOKEN   — PAT with write access to the winget-pkgs community repo
-#   HOMEBREW_TOKEN — PAT with write access to our-org/homebrew-birnio
+#   HOMEBREW_TOKEN — PAT with write access to birnio/homebrew-birnio
 #
 # SHA pins should be kept current; enable Dependabot for automatic updates.
 
@@ -255,7 +255,7 @@ jobs:
           token: ${{ secrets.WINGET_TOKEN }}
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Bump the Homebrew formula version in our-org/homebrew-birnio.
+  # Bump the Homebrew formula version in birnio/homebrew-birnio.
   # Requires HOMEBREW_TOKEN secret: a PAT with write access to that tap repo.
   # ──────────────────────────────────────────────────────────────────────────
   homebrew:
