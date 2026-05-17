@@ -203,6 +203,10 @@ jobs:
           $ucrt64 = "C:\msys64\ucrt64"
           "PKG_CONFIG_PATH=$ucrt64\lib\pkgconfig" | Out-File -Append $env:GITHUB_ENV
           "PATH=$ucrt64\bin;$env:PATH"            | Out-File -Append $env:GITHUB_ENV
+          # The Rust host is x86_64-pc-windows-msvc but the target is
+          # x86_64-pc-windows-gnu, so pkg-config thinks it's cross-compiling.
+          # This flag tells it the sysroot is compatible and to proceed.
+          "PKG_CONFIG_ALLOW_CROSS=1"              | Out-File -Append $env:GITHUB_ENV
 
       # ── Rust toolchain ───────────────────────────────────────────────────
 

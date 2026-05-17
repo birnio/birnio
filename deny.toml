@@ -47,17 +47,16 @@ db-urls = ["https://github.com/rustsec/advisory-db"]
 # fetch entirely when cargo-audit has already updated the DB in the same job.
 git-fetch-with-cli = true
 
-# Hard-fail on any crate with a known security vulnerability.
-vulnerability = "deny"
+# Vulnerabilities always produce hard errors in modern cargo-deny; no field
+# needed. Add an [[advisories.ignore]] entry to suppress a specific advisory.
 
-# Warn on unmaintained crates; they may become vulnerabilities over time.
-unmaintained = "warn"
+# Scope of unmaintained-crate checks: all | workspace | transitive | none.
+# "workspace" flags direct workspace dependencies only, keeping noise low
+# while still catching the crates you own the update decision for.
+unmaintained = "workspace"
 
-# Warn on yanked crate versions — a yank usually signals a serious bug.
+# Yanked crate versions: deny | warn | allow.
 yanked = "warn"
-
-# Surface informational security notices without failing the build.
-notice = "warn"
 
 # ── Dependency bans ───────────────────────────────────────────────────────────
 [bans]
