@@ -101,7 +101,7 @@ jobs:
         run: cargo deny check
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Tests — cargo nextest provides structured output and parallel execution.
+  # Tests — cargo nextest for structured output; cargo-llvm-cov for coverage.
   # GTK4 headers are required for compilation; tests that need a display
   # server are expected to be gated behind #[cfg(test)] feature flags or
   # skipped via nextest filters.
@@ -118,10 +118,12 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config
 
-      - name: Install Rust stable
+      # llvm-tools-preview is required by cargo-llvm-cov for instrumentation.
+      - name: Install Rust stable + llvm-tools
         uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
         with:
           toolchain: stable
+          components: llvm-tools-preview
 
       - name: Cache Cargo registry and build artefacts
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
@@ -134,15 +136,28 @@ jobs:
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-test-
 
-      # Install cargo-nextest using the official install script (faster than
-      # `cargo install` because it fetches a pre-compiled binary).
-      - name: Install cargo-nextest
+      - name: Install cargo-nextest and cargo-llvm-cov
         run: |
           curl -LsSf https://get.nexte.st/latest/linux \
             | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
+          cargo install cargo-llvm-cov --locked
 
-      - name: Run test suite
-        run: cargo nextest run --workspace --locked
+      # Run tests under llvm-cov instrumentation and emit an LCOV report.
+      # cargo-llvm-cov integrates with nextest via the `nextest` subcommand.
+      - name: Run test suite with coverage
+        run: |
+          cargo llvm-cov nextest \
+            --workspace \
+            --locked \
+            --lcov \
+            --output-path lcov.info
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe # v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info
+          fail_ci_if_error: true
 
   # ──────────────────────────────────────────────────────────────────────────
   # Cross-platform compile check — verifies the workspace builds on every
