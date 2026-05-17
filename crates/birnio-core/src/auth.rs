@@ -1,17 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Auth {
+    #[default]
     None,
     Basic(BasicAuth),
     Bearer(BearerAuth),
-}
-
-impl Default for Auth {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
