@@ -97,7 +97,8 @@ jobs:
         if: runner.os == 'Windows' && steps.gvsbuild-cache.outputs.cache-hit != 'true'
         run: |
           pip install gvsbuild
-          gvsbuild build gtk4 libadwaita
+          # --vs-ver 18 targets Visual Studio 2026; update if the runner image changes.
+          gvsbuild build gtk4 libadwaita --vs-ver 18
 
       - name: Configure GTK4 environment variables (Windows)
         if: runner.os == 'Windows'
