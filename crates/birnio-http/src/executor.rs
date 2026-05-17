@@ -20,12 +20,16 @@ impl ReqwestExecutor {
 }
 
 impl HttpExecutor for ReqwestExecutor {
-    async fn execute(&self, request: &Request) -> HttpResult<Response> {
-        let reqwest_request = request_builder::build(self.client.inner(), request)?;
-        let started_at = Instant::now();
-        let response = self.client.inner().execute(reqwest_request).await?;
+    // `async fn` would trigger `refining_impl_trait` because the trait uses RPIT with `+ Send`.
+    #[allow(clippy::manual_async_fn)]
+    fn execute(&self, request: &Request) -> impl Future<Output = HttpResult<Response>> + Send {
+        async move {
+            let reqwest_request = request_builder::build(self.client.inner(), request)?;
+            let started_at = Instant::now();
+            let response = self.client.inner().execute(reqwest_request).await?;
 
-        response_parser::parse(response, started_at.elapsed()).await
+            response_parser::parse(response, started_at.elapsed()).await
+        }
     }
 }
 
