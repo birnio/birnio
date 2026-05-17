@@ -142,15 +142,16 @@ jobs:
             | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
           cargo install cargo-llvm-cov --locked
 
-      # Run tests under llvm-cov instrumentation and emit an LCOV report.
-      # cargo-llvm-cov integrates with nextest via the `nextest` subcommand.
+      # Run tests under llvm-cov instrumentation; --profile ci activates the
+      # nextest CI profile which emits JUnit XML alongside the LCOV report.
       - name: Run test suite with coverage
         run: |
           cargo llvm-cov nextest \
             --workspace \
             --locked \
             --lcov \
-            --output-path lcov.info
+            --output-path lcov.info \
+            --profile ci
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe # v5
@@ -158,6 +159,15 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
           fail_ci_if_error: true
+
+      # Upload JUnit test results so Codecov can display per-test analytics.
+      # Runs even when tests fail so failures are visible in the Codecov UI.
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: test-results.xml
 
   # ──────────────────────────────────────────────────────────────────────────
   # Cross-platform compile check — verifies the workspace builds on every
