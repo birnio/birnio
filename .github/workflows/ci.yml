@@ -76,7 +76,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-clippy-
 
       - name: Run Clippy — deny all warnings
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
   # ──────────────────────────────────────────────────────────────────────────
   # Cargo Deny — validates licences, bans, advisories, and allowed sources
@@ -142,7 +142,7 @@ jobs:
             | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
 
       - name: Run test suite
-        run: cargo nextest run --workspace
+        run: cargo nextest run --workspace --locked
 
   # ──────────────────────────────────────────────────────────────────────────
   # Cross-platform compile check — verifies the workspace builds on every
@@ -227,7 +227,7 @@ jobs:
         shell: bash
         run: |
           if [ -n "${{ matrix.rust_target }}" ]; then
-            cargo build --workspace --target ${{ matrix.rust_target }}
+            cargo build --workspace --locked --target ${{ matrix.rust_target }}
           else
-            cargo build --workspace
+            cargo build --workspace --locked
           fi
