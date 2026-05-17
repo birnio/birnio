@@ -6,7 +6,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-birnio-core = { path = "../birnio-core" }
+birnio-core = { path = "../birnio-core", version = "0.1" }
 serde_json.workspace = true
 sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "migrate", "uuid", "json"] }
 thiserror.workspace = true
