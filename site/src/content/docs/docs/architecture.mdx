@@ -1,0 +1,30 @@
+---
+title: Architecture
+description: How the Birnio workspace is split into focused Rust crates.
+---
+
+# Architecture
+
+Birnio is split into small crates so product work can move without turning the desktop app into one large frontend binary.
+
+## Crates
+
+### `birnio-core`
+
+The stable center of the project. It defines collections, requests, responses, environments, variables, and authentication without depending on UI, storage, or HTTP libraries.
+
+### `birnio-http`
+
+Builds and executes HTTP requests through `reqwest`, then converts responses back into `birnio-core` types.
+
+### `birnio-storage`
+
+Owns SQLite migrations and repository functions. It converts database records into the core domain types.
+
+### `birnio-import`
+
+Converts external formats into Birnio collections. Postman has a minimal initial importer; Bruno and Insomnia support are planned.
+
+### `birnio-ui-gtk`
+
+The native GTK/libadwaita desktop shell.

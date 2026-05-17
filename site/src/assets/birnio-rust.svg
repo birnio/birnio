@@ -1,0 +1,46 @@
+<svg width="1200" height="520" viewBox="0 0 1200 520" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Birnio rust-inspired abstract banner</title>
+  <desc id="desc">An abstract oxidized steel banner with request and response panels.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#151719"/>
+      <stop offset="0.52" stop-color="#25201D"/>
+      <stop offset="1" stop-color="#47261B"/>
+    </linearGradient>
+    <linearGradient id="rust" x1="164" y1="87" x2="984" y2="475" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D96B32"/>
+      <stop offset="0.5" stop-color="#A64223"/>
+      <stop offset="1" stop-color="#5E2A1D"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="262" y1="136" x2="900" y2="400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#CBD3D8"/>
+      <stop offset="0.45" stop-color="#6D7A80"/>
+      <stop offset="1" stop-color="#30383C"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="28" stdDeviation="28" flood-color="#000000" flood-opacity="0.38"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="520" fill="url(#bg)"/>
+  <path d="M0 411C151 346 263 434 397 363C526 294 568 160 720 148C881 136 954 254 1200 163V520H0V411Z" fill="#0F1113" opacity="0.64"/>
+  <path d="M156 128C267 79 341 82 441 121C514 149 571 143 643 108C736 63 845 74 930 140C1012 204 1075 211 1148 182V438H52V174C88 171 118 145 156 128Z" fill="url(#rust)" opacity="0.92"/>
+  <g filter="url(#shadow)">
+    <rect x="156" y="102" width="888" height="316" rx="28" fill="#171A1D" stroke="#E1773D" stroke-opacity="0.5" stroke-width="2"/>
+    <rect x="196" y="148" width="306" height="224" rx="16" fill="#22282B" stroke="#7D8A90" stroke-opacity="0.38"/>
+    <rect x="536" y="148" width="468" height="224" rx="16" fill="#1C2022" stroke="#7D8A90" stroke-opacity="0.38"/>
+    <rect x="220" y="176" width="104" height="28" rx="8" fill="#C9582E"/>
+    <rect x="340" y="176" width="134" height="28" rx="8" fill="#30383C"/>
+    <rect x="220" y="228" width="232" height="18" rx="9" fill="#77858B"/>
+    <rect x="220" y="262" width="180" height="18" rx="9" fill="#5D6A70"/>
+    <rect x="220" y="296" width="248" height="18" rx="9" fill="#414B50"/>
+    <rect x="566" y="178" width="102" height="22" rx="11" fill="#6FB584"/>
+    <rect x="690" y="180" width="168" height="18" rx="9" fill="#69777D"/>
+    <rect x="566" y="230" width="392" height="16" rx="8" fill="#465157"/>
+    <rect x="566" y="262" width="344" height="16" rx="8" fill="#59666C"/>
+    <rect x="566" y="294" width="282" height="16" rx="8" fill="#465157"/>
+    <path d="M117 90L147 70L181 84L189 123L160 148L122 135L109 103L117 90Z" fill="url(#steel)" opacity="0.76"/>
+    <path d="M1015 376L1044 352L1083 367L1092 407L1061 432L1024 419L1008 390L1015 376Z" fill="url(#steel)" opacity="0.62"/>
+  </g>
+  <text x="600" y="470" text-anchor="middle" fill="#F4E7DC" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="34" font-weight="700">Birnio</text>
+  <text x="600" y="498" text-anchor="middle" fill="#C9BDB5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="17">A fast, reliable, open-source API client built in Rust</text>
+</svg>

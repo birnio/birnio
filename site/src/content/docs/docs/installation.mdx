@@ -1,0 +1,36 @@
+---
+title: Installation
+description: Install Birnio or run it from source.
+---
+
+# Installation
+
+Birnio does not have a stable public release yet. Distribution channels are being prepared while the first product workflows are built.
+
+## Homebrew preview
+
+The Homebrew tap exists for release testing:
+
+```sh
+brew tap birnio/birnio
+brew install --cask birnio
+```
+
+The current tap is temporary and follows the latest GitHub release. Before public distribution, it will move to pinned versions and SHA256 checksums.
+
+## Run from source
+
+Install Rust stable and the GTK/libadwaita development libraries for your platform, then run:
+
+```sh
+cargo run -p birnio-ui-gtk
+```
+
+For common development checks:
+
+```sh
+make fmt
+make check
+make test
+make run-ui
+```
