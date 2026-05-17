@@ -1,0 +1,40 @@
+# CodeRabbit configuration for Birnio.
+# Full reference: https://docs.coderabbit.ai/guides/configure-coderabbit
+
+# Review comments and summaries are written in English so all contributors
+# can read them regardless of native language.
+language: "en-US"
+
+# Additional tone guidance layered on top of the profile setting below.
+tone_instructions: >
+  Be direct and practical. Prioritize correctness, memory safety, and idiomatic
+  Rust. Skip obvious comments about what the code does; focus on the why and
+  on potential unintended consequences.
+
+reviews:
+  # "chill" produces concise, high-signal feedback instead of exhaustive
+  # line-by-line commentary — appropriate for a fast-moving early-stage project.
+  profile: "chill"
+
+  # Post a high-level PR summary automatically so reviewers get immediate
+  # context without reading every commit message.
+  high_level_summary: true
+
+  # Suppress the decorative poem that CodeRabbit appends to summaries.
+  poem: false
+
+  # Show a review-status badge on the PR.
+  review_status: true
+
+  auto_review:
+    # Trigger a review automatically when a PR is opened or updated.
+    enabled: true
+    # Do not auto-review draft PRs — they are works-in-progress by definition.
+    drafts: false
+
+# ── Path filters ─────────────────────────────────────────────────────────────
+# Exclude binary assets and generated migration files; changes there rarely
+# benefit from code review commentary.
+path_filters:
+  - "!assets/**"
+  - "!**/migrations/**"

@@ -1,0 +1,228 @@
+# CI — runs on every push and pull request targeting main.
+#
+# Jobs:
+#   fmt            — cargo fmt --check (whole workspace)
+#   clippy         — cargo clippy -D warnings (whole workspace)
+#   deny           — cargo deny check (requires deny.toml at repo root)
+#   test           — cargo nextest run (whole workspace)
+#   build          — compile-only matrix across ubuntu / macOS / Windows
+#
+# SHA pins should be kept current; enable Dependabot for automatic updates.
+# See .github/dependabot.yml (not included here).
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Format check — no system deps needed (rustfmt only reads token streams).
+  # ──────────────────────────────────────────────────────────────────────────
+  fmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install Rust stable + rustfmt
+        uses: dtolnay/rust-toolchain@4f647bec86b890d1e67be02dd1e96e8c9e39879b # stable
+        with:
+          toolchain: stable
+          components: rustfmt
+
+      - name: Check workspace formatting
+        run: cargo fmt --all --check
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Clippy — GTK4 headers are required because gtk4-rs proc-macros expand
+  # against the installed headers at compile time.
+  # ──────────────────────────────────────────────────────────────────────────
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install GTK4 and libadwaita dev headers
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config
+
+      - name: Install Rust stable + clippy
+        uses: dtolnay/rust-toolchain@4f647bec86b890d1e67be02dd1e96e8c9e39879b # stable
+        with:
+          toolchain: stable
+          components: clippy
+
+      - name: Cache Cargo registry and build artefacts
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-clippy-
+
+      - name: Run Clippy — deny all warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Cargo Deny — validates licences, bans, advisories, and allowed sources
+  # as defined in deny.toml at the repository root.
+  # ──────────────────────────────────────────────────────────────────────────
+  deny:
+    name: Cargo Deny
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@4f647bec86b890d1e67be02dd1e96e8c9e39879b # stable
+        with:
+          toolchain: stable
+
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked
+
+      - name: Run cargo deny check
+        run: cargo deny check
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Tests — cargo nextest provides structured output and parallel execution.
+  # GTK4 headers are required for compilation; tests that need a display
+  # server are expected to be gated behind #[cfg(test)] feature flags or
+  # skipped via nextest filters.
+  # ──────────────────────────────────────────────────────────────────────────
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install GTK4 and libadwaita dev headers
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@4f647bec86b890d1e67be02dd1e96e8c9e39879b # stable
+        with:
+          toolchain: stable
+
+      - name: Cache Cargo registry and build artefacts
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-test-
+
+      # Install cargo-nextest using the official install script (faster than
+      # `cargo install` because it fetches a pre-compiled binary).
+      - name: Install cargo-nextest
+        run: |
+          curl -LsSf https://get.nexte.st/latest/linux \
+            | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
+
+      - name: Run test suite
+        run: cargo nextest run --workspace
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Cross-platform compile check — verifies the workspace builds on every
+  # supported OS. Tests are intentionally excluded; GTK4 requires a running
+  # display server, which is not available on most CI runners.
+  # ──────────────────────────────────────────────────────────────────────────
+  build:
+    name: Build / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: macos-latest
+          - os: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      # ── System dependencies ─────────────────────────────────────────────
+
+      - name: Install GTK4 and libadwaita (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config
+
+      - name: Install GTK4 and libadwaita (macOS)
+        if: runner.os == 'macOS'
+        run: brew install gtk4 libadwaita pkg-config
+
+      # Windows: GTK4 is built from source via gvsbuild which produces
+      # MSVC-compatible static/import libraries. The output is cached so
+      # only the first cold run pays the build cost (~30 min).
+      - name: Restore gvsbuild cache (Windows)
+        if: runner.os == 'Windows'
+        id: gvsbuild-cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: C:\gtk-build
+          key: gvsbuild-gtk4-libadwaita-x64
+
+      - name: Build GTK4 via gvsbuild (Windows — cache miss only)
+        if: runner.os == 'Windows' && steps.gvsbuild-cache.outputs.cache-hit != 'true'
+        run: |
+          pip install gvsbuild
+          gvsbuild build gtk4 libadwaita
+
+      - name: Configure GTK4 environment variables (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $prefix = "C:\gtk-build\gtk\x64\release"
+          "PKG_CONFIG_PATH=$prefix\lib\pkgconfig" | Out-File -Append $env:GITHUB_ENV
+          "PATH=$prefix\bin;$env:PATH"            | Out-File -Append $env:GITHUB_ENV
+          "LIB=$prefix\lib;$env:LIB"              | Out-File -Append $env:GITHUB_ENV
+
+      - name: Install pkg-config shim (Windows)
+        if: runner.os == 'Windows'
+        run: choco install pkgconfiglite -y
+
+      # ── Rust toolchain ───────────────────────────────────────────────────
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@4f647bec86b890d1e67be02dd1e96e8c9e39879b # stable
+        with:
+          toolchain: stable
+
+      - name: Cache Cargo registry and build artefacts
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-build-
+
+      - name: Build workspace (compile check only)
+        run: cargo build --workspace

@@ -1,0 +1,47 @@
+# Dependabot — automated dependency updates for Birnio.
+#
+# Cargo: all crates in the workspace are grouped into a single weekly PR so
+# that reviewers see one consolidated diff instead of one PR per crate update.
+#
+# GitHub Actions: keeps action SHA pins current (see .github/workflows/).
+
+version: 2
+
+updates:
+  # ── Rust / Cargo workspace ─────────────────────────────────────────────
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "UTC"
+    target-branch: "main"
+    # A single grouped PR avoids review fatigue when many crates update together.
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+    # Keep commit messages consistent with the project's conventional-commits style.
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  # ── GitHub Actions ────────────────────────────────────────────────────
+  # All workflow actions are pinned to SHAs; Dependabot will open PRs to
+  # update those SHAs when new versions are released.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "UTC"
+    target-branch: "main"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
