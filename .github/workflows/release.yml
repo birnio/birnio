@@ -267,5 +267,5 @@ jobs:
         with:
           # PAT with write access to the tap repository.
           token: ${{ secrets.HOMEBREW_TOKEN }}
-          tap: our-org/homebrew-birnio
+          tap: birnio/homebrew-birnio
           formula: birnio
