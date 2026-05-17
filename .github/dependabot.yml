@@ -45,3 +45,20 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
+
+  # ── Website / docs ────────────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/site"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "UTC"
+    target-branch: "main"
+    groups:
+      site-dependencies:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "docs"
+      include: "scope"

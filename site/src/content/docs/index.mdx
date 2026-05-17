@@ -1,0 +1,41 @@
+---
+title: Birnio
+description: Open-source API client written in Rust with a native GTK/libadwaita desktop experience.
+template: splash
+hero:
+  layout: centered-top
+  announcement:
+    text: Early-stage foundation release work is in progress
+    link: /docs/packaging/
+  image:
+    file: ../../assets/birnio-rust.svg
+  actions:
+    - text: Read the docs
+      link: /docs/
+      icon: right-arrow
+    - text: View source
+      link: https://github.com/birnio/birnio
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+import { ContainerSection } from 'lucode-starlight/components';
+
+<ContainerSection width="xl">
+
+	## Built For
+
+	<CardGrid>
+		<Card title="Local-first core" icon="database">
+			Domain types, storage, importing, and HTTP execution live in focused Rust crates.
+		</Card>
+		<Card title="Native desktop UI" icon="desktop">
+			GTK4 and libadwaita give Birnio a platform-native desktop foundation.
+		</Card>
+		<Card title="Release-aware packaging" icon="package">
+			Homebrew, winget, and Flatpak are being planned as first-class distribution paths.
+		</Card>
+	</CardGrid>
+
+</ContainerSection>

@@ -1,0 +1,29 @@
+---
+title: Overview
+description: Start here to understand what Birnio is and where the project is going.
+---
+
+# Birnio
+
+Birnio is an early-stage open-source API client written in Rust. The goal is to build a fast, reliable, local-first alternative to tools like Bruno and Insomnia with a native GTK/libadwaita desktop experience.
+
+## Project shape
+
+The repository is intentionally modular:
+
+- `birnio-core` defines the shared domain model.
+- `birnio-http` executes requests and maps responses.
+- `birnio-storage` owns SQLite persistence.
+- `birnio-import` converts external collection formats.
+- `birnio-ui-gtk` provides the native desktop shell.
+
+## Status
+
+Birnio is currently a foundation skeleton. The workspace compiles, has a minimal GTK/libadwaita shell, and includes first-pass core, HTTP, storage, and import modules. The UI is not yet a usable API client.
+
+## Next milestones
+
+- Build the first real request editor flow.
+- Persist collections and environments.
+- Execute requests from the desktop UI.
+- Prepare pinned package distribution for Homebrew, winget, and Flatpak.

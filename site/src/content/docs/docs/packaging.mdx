@@ -1,0 +1,20 @@
+---
+title: Packaging
+description: Planned release channels for macOS, Linux, and Windows.
+---
+
+# Packaging
+
+Release packaging is being wired early so installation is not an afterthought.
+
+## Homebrew
+
+The tap lives at [`birnio/homebrew-birnio`](https://github.com/birnio/homebrew-birnio). It currently supports release testing. The long-term flow should pin cask versions and SHA256 checksums for both macOS architectures.
+
+## winget
+
+The Windows package will be submitted through the Windows Package Manager community repository. The first release may need a manual manifest before automation can update future versions.
+
+## Flatpak
+
+Flatpak and Flathub are the natural Linux distribution target for a GTK/libadwaita app. The project needs a stable app ID, desktop file, icon, AppStream metadata, and a Flatpak manifest before submission.
