@@ -1,11 +1,11 @@
-use std::time::Instant;
+use std::{future::Future, time::Instant};
 
 use birnio_core::{Request, Response};
 
 use crate::{HttpClient, HttpResult, request_builder, response_parser};
 
 pub trait HttpExecutor {
-    async fn execute(&self, request: &Request) -> HttpResult<Response>;
+    fn execute(&self, request: &Request) -> impl Future<Output = HttpResult<Response>> + Send;
 }
 
 #[derive(Clone)]
