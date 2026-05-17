@@ -115,7 +115,7 @@ jobs:
       # ── Rust toolchain ───────────────────────────────────────────────────
 
       - name: Install Rust stable for ${{ matrix.target }}
-        uses: dtolnay/rust-toolchain@4f647bec86b890d1e67be02dd1e96e8c9e39879b # stable
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
         with:
           toolchain: stable
           targets: ${{ matrix.target }}
@@ -227,7 +227,7 @@ jobs:
       # The tag name (e.g. v1.2.3) is available via github.ref_name.
       # generate_release_notes pulls from merged PRs and commit history.
       - name: Create GitHub Release and upload assets
-        uses: softprops/action-gh-release@c062e08bd532815e2082a7e09ce9571a95d9f766 # v2.0.9
+        uses: softprops/action-gh-release@e7a8f85e1c67a31e6ed99a94b41bd0b71bbee6b8 # v2.0.9
         with:
           files: |
             artifacts/${{ env.BINARY_NAME }}-*
@@ -245,7 +245,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Submit new version to winget
-        uses: vedantmgoyal9/winget-releaser@39a2fbe8e87745e70ef879c2427f7bc7c2db1cdb # v2 (verify SHA)
+        uses: vedantmgoyal9/winget-releaser@4ffc7888bffd451b357355dc214d43bb9f23917e # v2 (verify SHA)
         with:
           # The package identifier as registered in the winget-pkgs repository.
           identifier: Birnio.Birnio
@@ -262,7 +262,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Bump formula version in Homebrew tap
-        uses: dawidd6/action-homebrew-bump-formula@b3a935e9e8d7f0e4fd36c6fcccecdc2bab5cbf81 # v3 (verify SHA)
+        uses: dawidd6/action-homebrew-bump-formula@baf2b60c51fc1f8453c884b0c61052668a71bd1d # v3 (verify SHA)
         with:
           # PAT with write access to the tap repository.
           token: ${{ secrets.HOMEBREW_TOKEN }}
