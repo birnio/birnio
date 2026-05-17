@@ -212,11 +212,13 @@ jobs:
       # pkg-config is provided by the mingw-w64-ucrt-x86_64-pkgconf package.
       - name: Install GTK4 and libadwaita (Windows via MSYS2)
         if: runner.os == 'Windows'
+        id: msys2
         uses: msys2/setup-msys2@e9898307ac31d1a803454791be09ab9973336e1c # v2
         with:
           msystem: UCRT64
           update: false
           install: >-
+            mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-gtk4
             mingw-w64-ucrt-x86_64-libadwaita
             mingw-w64-ucrt-x86_64-pkgconf
@@ -225,17 +227,33 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $ucrt64 = "C:\msys64\ucrt64"
+          $msys2 = "${{ steps.msys2.outputs.msys2-location }}"
+          $ucrt64 = Join-Path $msys2 "ucrt64"
           # Add the UCRT64 bin dir to PATH via GITHUB_PATH (correct mechanism
           # for PATH in GHA; GITHUB_ENV PATH= doesn't always propagate cleanly).
           "$ucrt64\bin" | Out-File -Append $env:GITHUB_PATH
           # Point pkg-config at the UCRT64 package metadata.
-          "PKG_CONFIG_PATH=$ucrt64\lib\pkgconfig"       | Out-File -Append $env:GITHUB_ENV
+          "PKG_CONFIG_PATH=$ucrt64\lib\pkgconfig;$ucrt64\share\pkgconfig" | Out-File -Append $env:GITHUB_ENV
           # MSYS2 ships pkgconf.exe, not pkg-config.exe; set PKG_CONFIG so
           # Cargo build scripts find it by full path regardless of naming.
           "PKG_CONFIG=$ucrt64\bin\pkgconf.exe"          | Out-File -Append $env:GITHUB_ENV
           # Host is msvc, target is gnu — tell pkg-config cross-compile is fine.
           "PKG_CONFIG_ALLOW_CROSS=1"                    | Out-File -Append $env:GITHUB_ENV
+          # Use the same UCRT64 GNU linker as the GTK import libraries.
+          "CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=$ucrt64\bin\gcc.exe" | Out-File -Append $env:GITHUB_ENV
+
+      - name: Verify MSYS2 pkg-config tools (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Test-Path $env:PKG_CONFIG)) {
+            throw "pkgconf.exe was not found at $env:PKG_CONFIG"
+          }
+          if (-not (Test-Path $env:CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER)) {
+            throw "gcc.exe was not found at $env:CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER"
+          }
+          & "$env:PKG_CONFIG" --version
+          & "$env:PKG_CONFIG" --modversion glib-2.0 gtk4 libadwaita-1
 
       # ── Rust toolchain ───────────────────────────────────────────────────
 
