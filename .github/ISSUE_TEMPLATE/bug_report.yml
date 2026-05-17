@@ -1,0 +1,82 @@
+name: Bug Report
+description: Something isn't working as expected.
+title: "bug: <short description>"
+labels: ["bug", "triage"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill in as much detail as you can.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: "When I click … the app …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps that reliably trigger the issue.
+      placeholder: |
+        1. Open collection '…'
+        2. Send request '…'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      placeholder: I expected …
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Birnio version
+      placeholder: "e.g. 0.2.1  (Help → About)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux (X11)
+        - Linux (Wayland)
+        - macOS
+        - Windows
+    validations:
+      required: true
+
+  - type: input
+    id: os_version
+    attributes:
+      label: OS version
+      placeholder: "e.g. Ubuntu 24.04 / macOS 15.2 / Windows 11 23H2"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or screenshots
+      description: Run Birnio with `RUST_LOG=debug` and paste the output, or attach a screenshot.
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: I am running the latest released version of Birnio.
+          required: true

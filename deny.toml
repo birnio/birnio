@@ -1,0 +1,102 @@
+# cargo-deny configuration for Birnio.
+#
+# Usage:
+#   cargo deny check              # full check (licences + advisories + bans + sources)
+#   cargo deny check licenses     # licence audit only
+#   cargo deny check advisories   # advisory audit only
+#
+# In CI, cargo audit is responsible for fetching the advisory database;
+# pass `--no-fetch` to avoid a redundant network round-trip:
+#   cargo deny --no-fetch check advisories
+
+# ── Licence policy ────────────────────────────────────────────────────────────
+[licenses]
+# SPDX identifiers for licences that are explicitly permitted.
+# cargo-deny v2 uses an allowlist-only model: every licence not listed here
+# is denied by default — including unlicensed crates — so no extra fields
+# are needed. Dual-licenced crates (e.g. "MIT OR Apache-2.0") are allowed
+# when both identifiers appear in this list.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MPL-2.0",
+    "ISC",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "Zlib",
+    "Unicode-DFS-2016",
+    "Unicode-3.0",
+    "CDLA-Permissive-2.0",
+]
+
+# Minimum confidence score (0.0–1.0) for automated licence-text detection.
+confidence-threshold = 0.8
+
+# ── Vulnerability advisories ──────────────────────────────────────────────────
+[advisories]
+# Filesystem path where the RustSec advisory database is cloned.
+db-path = "~/.cargo/advisory-db"
+
+# Remote advisory databases to consult. The RustSec community DB is the
+# canonical source for Rust ecosystem vulnerability disclosures.
+db-urls = ["https://github.com/rustsec/advisory-db"]
+
+# Use the system `git` binary rather than the built-in libgit2 when fetching
+# the advisory DB. This avoids TLS certificate issues on some CI runners and
+# is more transparent in build logs.
+# Note: in CI, prefer `cargo deny --no-fetch check advisories` to skip the
+# fetch entirely when cargo-audit has already updated the DB in the same job.
+git-fetch-with-cli = true
+
+# Vulnerabilities always produce hard errors in modern cargo-deny; no field
+# needed. Add an [[advisories.ignore]] entry to suppress a specific advisory.
+
+# Scope of unmaintained-crate checks: all | workspace | transitive | none.
+# "workspace" flags direct workspace dependencies only, keeping noise low
+# while still catching the crates you own the update decision for.
+unmaintained = "workspace"
+
+# Yanked crate versions: deny | warn | allow.
+yanked = "warn"
+
+# ── Dependency bans ───────────────────────────────────────────────────────────
+[bans]
+# Warn when the dependency graph contains multiple versions of the same crate.
+# Where possible, upgrade or patch transitive deps to converge on one version.
+# Use [[bans.skip]] below for duplicates that cannot yet be resolved.
+multiple-versions = "warn"
+
+# Deny wildcard version requirements (`*`); they pin nothing and break
+# reproducible builds.
+wildcards = "deny"
+
+# In diagnostics, highlight every path through the dependency graph that
+# leads to a duplicate crate version.
+highlight = "all"
+
+# ── Duplicate-version allowlist ────────────────────────────────────────────────
+# When a duplicate version is truly unavoidable — e.g. a transitive dependency
+# hasn't released a version compatible with the newer API yet — add an entry
+# here so cargo-deny doesn't fail the build.
+#
+# Remove entries once the ecosystem converges on a single version.
+#
+# Template:
+# [[bans.skip]]
+# name    = "example-crate"
+# version = "=1.0.0"         # the older version to tolerate (not the preferred one)
+# reason  = "transitive dep from foo; remove when foo releases >=2.0"
+
+# ── Source policy ─────────────────────────────────────────────────────────────
+[sources]
+# Reject crates sourced from registries not listed in allow-registry.
+unknown-registry = "deny"
+
+# Reject crates sourced from git repositories not listed in allow-git.
+# This prevents accidental use of forks or unreviewed personal repos in release
+# builds; add explicit [[sources.allow-git]] entries for approved git deps.
+unknown-git = "deny"
+
+# The only trusted registry is the official crates.io index.
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

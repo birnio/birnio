@@ -1,0 +1,6 @@
+# Nextest configuration for Birnio.
+# https://nexte.st/docs/configuration
+
+[profile.ci]
+# Emit JUnit XML so Codecov can display per-test results on PRs.
+junit = { path = "test-results.xml" }

@@ -1,0 +1,63 @@
+name: Feature Request
+description: Propose a new feature or improvement.
+title: "feat: <short description>"
+labels: ["enhancement", "triage"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before opening a request, search existing issues to avoid duplicates.
+        For large changes, consider opening a discussion first.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or motivation
+      description: What are you trying to do, and what's currently stopping you?
+      placeholder: "When working with large collections I find it hard to … because …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How would you like the feature to work? Mockups or examples are welcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      description: Any workarounds or alternative approaches you thought of.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Feature area
+      options:
+        - Request editor
+        - Response viewer
+        - Collections
+        - Environments
+        - Import / export
+        - Settings
+        - Performance
+        - Accessibility
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: >
+            I understand this is an open source project maintained by volunteers
+            and feature requests may not be prioritised immediately.
+          required: true

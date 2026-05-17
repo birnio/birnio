@@ -20,6 +20,8 @@ impl ReqwestExecutor {
 }
 
 impl HttpExecutor for ReqwestExecutor {
+    // `async fn` would trigger `refining_impl_trait` because the trait uses RPIT with `+ Send`.
+    #[allow(clippy::manual_async_fn)]
     fn execute(&self, request: &Request) -> impl Future<Output = HttpResult<Response>> + Send {
         async move {
             let reqwest_request = request_builder::build(self.client.inner(), request)?;

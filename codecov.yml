@@ -1,0 +1,53 @@
+# Codecov configuration for Birnio.
+# Full reference: https://docs.codecov.com/docs/codecovyml-reference
+
+coverage:
+  # ── Coverage status checks ────────────────────────────────────────────
+  status:
+    project:
+      default:
+        # Minimum acceptable coverage for the entire project.
+        # Set conservatively at 60% while the project is in early development;
+        # raise this threshold as the test suite matures.
+        target: 60%
+        # Allow up to 1 percentage point of drop before the check fails.
+        # This prevents spurious failures from floating-point rounding in
+        # coverage reports.
+        threshold: 1%
+        base: auto
+        branches:
+          - main
+
+    patch:
+      default:
+        # New code introduced in a PR must also meet the 60% bar.
+        target: 60%
+        # Give a slightly wider threshold for patches since small PRs with
+        # zero-coverage lines (e.g. error-path branches) are common in Rust.
+        threshold: 5%
+
+# ── Ignored paths ───────────────────────────────────────────────────────────
+# Exclude paths where coverage data is noisy or not meaningful:
+#   assets/                     — binary/static assets, no executable code
+#   **/migrations/**            — generated SQL; not Rust coverage
+#   birnio-ui-gtk/src/shell/**  — GTK4 shell glue; nearly untestable headless
+ignore:
+  - "assets/**"
+  - "**/migrations/**"
+  - "crates/birnio-ui-gtk/src/shell/**"
+
+# ── PR comment ──────────────────────────────────────────────────────────────
+comment:
+  # Show reach (overall), diff (lines changed in this PR), flags, and changed files.
+  layout: "reach,diff,flags,files"
+  # Post a new comment on each push rather than editing a previous one.
+  behavior: default
+  # Always post the comment, even if coverage did not change in the PR.
+  require_changes: false
+  # Pin the comment to the PR header for easy visibility.
+  require_base: false
+
+# ── Miscellaneous ────────────────────────────────────────────────────────────
+github_checks:
+  # Surface coverage results as a GitHub check alongside CI status.
+  annotations: true

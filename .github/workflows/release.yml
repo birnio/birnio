@@ -1,0 +1,274 @@
+# Release — triggered when a tag matching v*.*.* is pushed.
+#
+# Pipeline:
+#   build    — cross-compile release binaries for all 5 targets + SHA256 checksums
+#   release  — collect artefacts, create GitHub Release, attach all files
+#   winget   — update the Windows Package Manager manifest (vedantmgoyal9/winget-releaser)
+#   homebrew — bump the Homebrew tap formula (dawidd6/action-homebrew-bump-formula)
+#
+# Required secrets:
+#   WINGET_TOKEN   — PAT with write access to the winget-pkgs community repo
+#   HOMEBREW_TOKEN — PAT with write access to birnio/homebrew-birnio
+#
+# SHA pins should be kept current; enable Dependabot for automatic updates.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  CARGO_TERM_COLOR: always
+  # Crate that produces the final binary.
+  UI_CRATE: birnio-ui-gtk
+  # Name of the produced executable (without extension).
+  BINARY_NAME: birnio
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Build release binaries for all supported targets.
+  #
+  # Linux x86_64      — native build on ubuntu-latest
+  # Linux aarch64     — cross-compiled via `cross` on ubuntu-latest
+  #                     NOTE: the default cross Docker images do not include
+  #                     GTK4 / libadwaita headers. A custom Cross.toml that
+  #                     points to an image with those headers pre-installed is
+  #                     required. See https://github.com/cross-rs/cross.
+  # macOS x86_64      — native build on macos-13 (Intel runner)
+  # macOS aarch64     — native build on macos-latest (Apple Silicon runner)
+  # Windows x86_64    — native MSVC build on windows-latest via gvsbuild
+  # ──────────────────────────────────────────────────────────────────────────
+  build:
+    name: Build / ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            use_cross: false
+
+          # aarch64-unknown-linux-gnu: disabled until a custom cross Docker image
+          # with GTK4/libadwaita aarch64 headers is available. Track in an issue.
+
+          - target: x86_64-apple-darwin
+            os: macos-15-intel  # Intel runner; supported through Aug 2027
+            use_cross: false
+
+          - target: aarch64-apple-darwin
+            os: macos-latest  # Apple Silicon; builds natively
+            use_cross: false
+
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            use_cross: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      # ── System dependencies (skipped for cross targets; handled in container) ──
+
+      - name: Install GTK4 and libadwaita (Ubuntu native)
+        if: runner.os == 'Linux' && !matrix.use_cross
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config
+
+      - name: Install GTK4 and libadwaita (macOS)
+        if: runner.os == 'macOS'
+        run: brew install gtk4 libadwaita pkg-config
+
+      # Windows: GTK4 built via gvsbuild produces MSVC-compatible artefacts.
+      # The result is cached; the first cold run takes ~30 minutes.
+      - name: Restore gvsbuild cache (Windows)
+        if: runner.os == 'Windows'
+        id: gvsbuild-cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: C:\gtk-build
+          key: gvsbuild-gtk4-libadwaita-x64-release
+
+      - name: Build GTK4 via gvsbuild (Windows — cache miss only)
+        if: runner.os == 'Windows' && steps.gvsbuild-cache.outputs.cache-hit != 'true'
+        run: |
+          pip install gvsbuild
+          # --vs-ver 18 targets Visual Studio 2026; update if the runner image changes.
+          gvsbuild build gtk4 libadwaita --vs-ver 18
+
+      - name: Configure GTK4 environment variables (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $prefix = "C:\gtk-build\gtk\x64\release"
+          "PKG_CONFIG_PATH=$prefix\lib\pkgconfig" | Out-File -Append $env:GITHUB_ENV
+          "PATH=$prefix\bin;$env:PATH"            | Out-File -Append $env:GITHUB_ENV
+          "LIB=$prefix\lib;$env:LIB"              | Out-File -Append $env:GITHUB_ENV
+
+      - name: Install pkg-config shim (Windows)
+        if: runner.os == 'Windows'
+        run: choco install pkgconfiglite -y
+
+      # ── Rust toolchain ───────────────────────────────────────────────────
+
+      - name: Install Rust stable for ${{ matrix.target }}
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo registry and build artefacts
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-release-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-release-${{ matrix.target }}-
+
+      # `cross` is only installed when needed; it pulls a Docker image that
+      # includes the cross-compilation toolchain for the target triple.
+      - name: Install cross
+        if: matrix.use_cross
+        run: cargo install cross --locked
+
+      # ── Compile ──────────────────────────────────────────────────────────
+
+      - name: Build release binary (native)
+        if: ${{ !matrix.use_cross }}
+        run: >
+          cargo build
+          --locked
+          --release
+          --target ${{ matrix.target }}
+          -p ${{ env.UI_CRATE }}
+
+      - name: Build release binary (cross)
+        if: matrix.use_cross
+        run: >
+          cross build
+          --locked
+          --release
+          --target ${{ matrix.target }}
+          -p ${{ env.UI_CRATE }}
+
+      # ── Package ──────────────────────────────────────────────────────────
+
+      # Determine the platform-specific filename for the compiled binary.
+      - name: Resolve binary filename
+        id: bin
+        shell: bash
+        run: |
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            echo "name=${{ env.BINARY_NAME }}.exe" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${{ env.BINARY_NAME }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Rename the binary to include the target triple so all artefacts have
+      # unique names when collected in the release job.
+      - name: Rename binary to include target triple
+        shell: bash
+        run: |
+          ext="${{ runner.os == 'Windows' && '.exe' || '' }}"
+          src="target/${{ matrix.target }}/release/${{ steps.bin.outputs.name }}"
+          dst="${{ env.BINARY_NAME }}-${{ matrix.target }}${ext}"
+          cp "$src" "$dst"
+          echo "ARTIFACT=$dst" >> "$GITHUB_ENV"
+
+      # Generate a per-binary SHA256 checksum. These are later concatenated
+      # into a single SHA256SUMS.txt file in the release job.
+      - name: Generate SHA256 checksum
+        shell: bash
+        run: |
+          if command -v sha256sum &>/dev/null; then
+            sha256sum "$ARTIFACT" > "${ARTIFACT}.sha256"
+          else
+            # macOS ships shasum instead of sha256sum
+            shasum -a 256 "$ARTIFACT" > "${ARTIFACT}.sha256"
+          fi
+
+      - name: Upload binary and checksum as workflow artefact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: |
+            ${{ env.ARTIFACT }}
+            ${{ env.ARTIFACT }}.sha256
+          if-no-files-found: error
+          retention-days: 1
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Collect all binaries and create the GitHub Release.
+  # ──────────────────────────────────────────────────────────────────────────
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required to create releases and upload assets
+    steps:
+      - name: Download all build artefacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: artifacts
+          merge-multiple: true  # flatten subdirectories into a single directory
+
+      - name: List downloaded artefacts
+        run: ls -lh artifacts/
+
+      # Merge the individual per-binary .sha256 files into one canonical file.
+      - name: Combine checksums into SHA256SUMS.txt
+        run: cat artifacts/*.sha256 > artifacts/SHA256SUMS.txt
+
+      # The tag name (e.g. v1.2.3) is available via github.ref_name.
+      # generate_release_notes pulls from merged PRs and commit history.
+      - name: Create GitHub Release and upload assets
+        uses: softprops/action-gh-release@e7a8f85e1c67a31e6ed99a94b41bd0b71bbee6b8 # v2.0.9
+        with:
+          files: |
+            artifacts/${{ env.BINARY_NAME }}-*
+            artifacts/SHA256SUMS.txt
+          generate_release_notes: true
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Update the Windows Package Manager (winget) manifest.
+  # Requires WINGET_TOKEN secret: a PAT with write access to the
+  # microsoft/winget-pkgs community repository.
+  # ──────────────────────────────────────────────────────────────────────────
+  winget:
+    name: Update winget manifest
+    needs: release
+    runs-on: windows-latest
+    steps:
+      - name: Submit new version to winget
+        uses: vedantmgoyal9/winget-releaser@4ffc7888bffd451b357355dc214d43bb9f23917e # v2 (verify SHA)
+        with:
+          # The package identifier as registered in the winget-pkgs repository.
+          identifier: Birnio.Birnio
+          # PAT with write access to the winget community repository.
+          token: ${{ secrets.WINGET_TOKEN }}
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Bump the Homebrew formula version in birnio/homebrew-birnio.
+  # Requires HOMEBREW_TOKEN secret: a PAT with write access to that tap repo.
+  # ──────────────────────────────────────────────────────────────────────────
+  homebrew:
+    name: Update Homebrew formula
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bump formula version in Homebrew tap
+        uses: dawidd6/action-homebrew-bump-formula@baf2b60c51fc1f8453c884b0c61052668a71bd1d # v3 (verify SHA)
+        with:
+          # PAT with write access to the tap repository.
+          token: ${{ secrets.HOMEBREW_TOKEN }}
+          # Homebrew tap name: owner/name without the "homebrew-" prefix.
+          # This corresponds to github.com/birnio/homebrew-birnio.
+          tap: birnio/birnio
+          formula: birnio

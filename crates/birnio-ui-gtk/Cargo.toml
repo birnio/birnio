@@ -6,10 +6,10 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-birnio-core = { path = "../birnio-core" }
-birnio-http = { path = "../birnio-http" }
-birnio-import = { path = "../birnio-import" }
-birnio-storage = { path = "../birnio-storage" }
+birnio-core = { path = "../birnio-core", version = "0.1" }
+birnio-http = { path = "../birnio-http", version = "0.1" }
+birnio-import = { path = "../birnio-import", version = "0.1" }
+birnio-storage = { path = "../birnio-storage", version = "0.1" }
 
 adw = { package = "libadwaita", version = "0.8" }
 anyhow = "1"
