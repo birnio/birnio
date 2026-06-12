@@ -6,6 +6,7 @@ Thanks for your interest in contributing. This guide covers everything you need 
 
 - [Project structure](#project-structure)
 - [Prerequisites](#prerequisites)
+- [Developer commands](#developer-commands)
 - [Building](#building)
 - [Running](#running)
 - [Testing](#testing)
@@ -100,6 +101,28 @@ The CI test runner. Faster output and better failure summaries than `cargo test`
 ```sh
 cargo install cargo-nextest --locked
 ```
+
+---
+
+## Developer commands
+
+The common workflows are wrapped in the [`Makefile`](Makefile). Run `make help`
+to list every target. The most common ones:
+
+| Command | What it does |
+|---------|--------------|
+| `make fmt` | Format the workspace (`cargo fmt --all`) |
+| `make fmt-check` | Check formatting without writing files |
+| `make check` | Type-check the full workspace |
+| `make test` | Run all tests |
+| `make test-core` / `test-http` / `test-storage` / `test-import` | Run a single crate's tests |
+| `make check-ui` | Type-check the GTK/libadwaita UI |
+| `make run-ui` | Run the GTK/libadwaita UI |
+| `make tree` | Print the workspace dependency tree |
+| `make clean` | Remove build artifacts |
+
+The raw `cargo` equivalents are shown in the sections below if you prefer not to
+use `make`.
 
 ---
 
