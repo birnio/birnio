@@ -1,11 +1,30 @@
 # CI — runs on every push and pull request targeting main.
 #
 # Jobs:
+#   changes        — path-filter gate: decides whether Rust files changed
 #   fmt            — cargo fmt --check (whole workspace)
 #   clippy         — cargo clippy -D warnings (whole workspace)
 #   deny           — cargo deny check (requires deny.toml at repo root)
 #   test           — cargo nextest run (whole workspace)
 #   build          — compile-only matrix across ubuntu / macOS / Windows
+#
+# Path-aware gating
+# -----------------
+# The Rust jobs (fmt/clippy/deny/test/build) are the expensive part of CI and
+# are pointless when a PR only touches the website (site/**) or other non-Rust
+# files. To avoid wasting runner minutes we detect whether any Rust-relevant
+# path changed and skip the expensive STEPS when it did not.
+#
+# IMPORTANT — why we gate steps and NOT the jobs themselves:
+#   fmt/clippy/deny/test/build are configured as REQUIRED status checks in
+#   branch protection. If we skipped a required job with a job-level `if:`,
+#   GitHub reports that check as "skipped" — and a required check that never
+#   reports success leaves the PR's merge button blocked forever ("Expected —
+#   Waiting for status to be reported"). To keep the contract intact, every
+#   Rust job ALWAYS runs and ALWAYS completes successfully; only its expensive
+#   inner steps are guarded by `if: needs.changes.outputs.rust == 'true'`.
+#   When Rust is untouched the job is a near-instant no-op that reports green,
+#   so required checks are satisfied without doing real work.
 #
 # SHA pins should be kept current; enable Dependabot for automatic updates.
 # See .github/dependabot.yml (not included here).
@@ -24,22 +43,75 @@ env:
 
 jobs:
   # ──────────────────────────────────────────────────────────────────────────
-  # Format check — no system deps needed (rustfmt only reads token streams).
+  # Change detection — outputs `rust=true` when the push/PR touches anything
+  # that could affect Rust build, lint, licence or test results. The Rust jobs
+  # below consume this output to decide whether to run their expensive steps.
+  #
+  # Conservative by design: workflow files are treated as Rust-affecting so a
+  # change to CI/release/security automation always re-runs the full suite.
   # ──────────────────────────────────────────────────────────────────────────
-  fmt:
-    name: Rustfmt
+  changes:
+    name: Detect changes
     runs-on: ubuntu-latest
+    outputs:
+      # 'true' (string) when any Rust-relevant path changed, 'false' otherwise.
+      rust: ${{ steps.filter.outputs.rust }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - name: Filter changed paths
+        id: filter
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        with:
+          # On push events paths-filter diffs against the previous commit; on
+          # pull_request it diffs against the PR base — both correct here.
+          filters: |
+            rust:
+              # Rust sources anywhere in the workspace (crates/ and any future
+              # top-level src/, build.rs, etc.).
+              - '**/*.rs'
+              # Cargo manifests and the lockfile (dependency / metadata changes).
+              - '**/Cargo.toml'
+              - '**/Cargo.lock'
+              # Cargo / toolchain configuration that alters how Rust builds.
+              - '.cargo/**'
+              - 'rust-toolchain'
+              - 'rust-toolchain.toml'
+              # nextest profile config lives under .config/ and changes test runs.
+              - '.config/**'
+              # cargo-deny policy.
+              - 'deny.toml'
+              # Coverage configuration consumed by the test job.
+              - 'codecov.yml'
+              - 'codecov.toml'
+              # Build orchestration.
+              - 'Makefile'
+              # Conservative: any workflow change re-runs the full Rust suite so
+              # CI logic changes are always validated against the real jobs.
+              - '.github/workflows/**'
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Format check — no system deps needed (rustfmt only reads token streams).
+  # ──────────────────────────────────────────────────────────────────────────
+  fmt:
+    name: Rustfmt
+    needs: changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        if: needs.changes.outputs.rust == 'true'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
       - name: Install Rust stable + rustfmt
+        if: needs.changes.outputs.rust == 'true'
         uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
         with:
           toolchain: stable
           components: rustfmt
 
       - name: Check workspace formatting
+        if: needs.changes.outputs.rust == 'true'
         run: cargo fmt --all --check
 
   # ──────────────────────────────────────────────────────────────────────────
@@ -48,23 +120,28 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   clippy:
     name: Clippy
+    needs: changes
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
+        if: needs.changes.outputs.rust == 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install GTK4 and libadwaita dev headers
+        if: needs.changes.outputs.rust == 'true'
         run: |
           sudo apt-get update -q
           sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config
 
       - name: Install Rust stable + clippy
+        if: needs.changes.outputs.rust == 'true'
         uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
         with:
           toolchain: stable
           components: clippy
 
       - name: Cache Cargo registry and build artefacts
+        if: needs.changes.outputs.rust == 'true'
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
@@ -76,6 +153,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-clippy-
 
       - name: Run Clippy — deny all warnings
+        if: needs.changes.outputs.rust == 'true'
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
   # ──────────────────────────────────────────────────────────────────────────
@@ -84,20 +162,25 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   deny:
     name: Cargo Deny
+    needs: changes
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
+        if: needs.changes.outputs.rust == 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust stable
+        if: needs.changes.outputs.rust == 'true'
         uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
         with:
           toolchain: stable
 
       - name: Install cargo-deny
+        if: needs.changes.outputs.rust == 'true'
         run: cargo install cargo-deny --locked
 
       - name: Run cargo deny check
+        if: needs.changes.outputs.rust == 'true'
         run: cargo deny check
 
   # ──────────────────────────────────────────────────────────────────────────
@@ -108,26 +191,31 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   test:
     name: Test Suite
+    needs: changes
     runs-on: ubuntu-latest
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
       - name: Checkout repository
+        if: needs.changes.outputs.rust == 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install GTK4 and libadwaita dev headers
+        if: needs.changes.outputs.rust == 'true'
         run: |
           sudo apt-get update -q
           sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config
 
       # llvm-tools-preview is required by cargo-llvm-cov for instrumentation.
       - name: Install Rust stable + llvm-tools
+        if: needs.changes.outputs.rust == 'true'
         uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
         with:
           toolchain: stable
           components: llvm-tools-preview
 
       - name: Cache Cargo registry and build artefacts
+        if: needs.changes.outputs.rust == 'true'
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
@@ -139,6 +227,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-test-
 
       - name: Install cargo-nextest and cargo-llvm-cov
+        if: needs.changes.outputs.rust == 'true'
         run: |
           curl -LsSf https://get.nexte.st/latest/linux \
             | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
@@ -147,6 +236,7 @@ jobs:
       # Run tests under llvm-cov instrumentation; --profile ci activates the
       # nextest CI profile which emits JUnit XML alongside the LCOV report.
       - name: Run test suite with coverage
+        if: needs.changes.outputs.rust == 'true'
         run: |
           cargo llvm-cov nextest \
             --workspace \
@@ -156,7 +246,8 @@ jobs:
             --profile ci
 
       - name: Upload coverage to Codecov
-        if: ${{ env.CODECOV_TOKEN != '' }}
+        # Also requires rust changes — no coverage is produced otherwise.
+        if: ${{ needs.changes.outputs.rust == 'true' && env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ env.CODECOV_TOKEN }}
@@ -168,7 +259,7 @@ jobs:
       # Dependabot PRs do not receive repository secrets, so skip Codecov
       # uploads when the token is unavailable.
       - name: Upload test results to Codecov
-        if: ${{ !cancelled() && env.CODECOV_TOKEN != '' }}
+        if: ${{ !cancelled() && needs.changes.outputs.rust == 'true' && env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ env.CODECOV_TOKEN }}
@@ -187,6 +278,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   build:
     name: Build / ${{ matrix.os }}
+    needs: changes
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -198,27 +290,32 @@ jobs:
           - os: windows-latest
             rust_target: x86_64-pc-windows-gnu
 
+    # NOTE: each matrix leg is its own required check ("Build / <os>"), so every
+    # leg must still run and report green even when Rust is untouched. Steps are
+    # therefore individually gated on needs.changes.outputs.rust; the OS-specific
+    # steps additionally keep their runner.os guard.
     steps:
       - name: Checkout repository
+        if: needs.changes.outputs.rust == 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       # ── System dependencies ─────────────────────────────────────────────
 
       - name: Install GTK4 and libadwaita (Ubuntu)
-        if: runner.os == 'Linux'
+        if: needs.changes.outputs.rust == 'true' && runner.os == 'Linux'
         run: |
           sudo apt-get update -q
           sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config
 
       - name: Install GTK4 and libadwaita (macOS)
-        if: runner.os == 'macOS'
+        if: needs.changes.outputs.rust == 'true' && runner.os == 'macOS'
         run: brew install gtk4 libadwaita pkg-config
 
       # Windows: install pre-built GTK4 packages from MSYS2/UCRT64.
       # This is fast (~2 min) and avoids building from source.
       # pkg-config is provided by the mingw-w64-ucrt-x86_64-pkgconf package.
       - name: Install GTK4 and libadwaita (Windows via MSYS2)
-        if: runner.os == 'Windows'
+        if: needs.changes.outputs.rust == 'true' && runner.os == 'Windows'
         id: msys2
         uses: msys2/setup-msys2@e9898307ac31d1a803454791be09ab9973336e1c # v2
         with:
@@ -231,7 +328,7 @@ jobs:
             mingw-w64-ucrt-x86_64-pkgconf
 
       - name: Configure MSYS2 environment variables (Windows)
-        if: runner.os == 'Windows'
+        if: needs.changes.outputs.rust == 'true' && runner.os == 'Windows'
         shell: pwsh
         run: |
           $msys2 = "${{ steps.msys2.outputs.msys2-location }}"
@@ -250,7 +347,7 @@ jobs:
           "CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=$ucrt64\bin\gcc.exe" | Out-File -Append $env:GITHUB_ENV
 
       - name: Verify MSYS2 pkg-config tools (Windows)
-        if: runner.os == 'Windows'
+        if: needs.changes.outputs.rust == 'true' && runner.os == 'Windows'
         shell: pwsh
         run: |
           if (-not (Test-Path $env:PKG_CONFIG)) {
@@ -265,12 +362,14 @@ jobs:
       # ── Rust toolchain ───────────────────────────────────────────────────
 
       - name: Install Rust stable
+        if: needs.changes.outputs.rust == 'true'
         uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
         with:
           toolchain: stable
           targets: ${{ matrix.rust_target }}
 
       - name: Cache Cargo registry and build artefacts
+        if: needs.changes.outputs.rust == 'true'
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
@@ -282,6 +381,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-build-
 
       - name: Build workspace (compile check only)
+        if: needs.changes.outputs.rust == 'true'
         shell: bash
         run: |
           if [ -n "${{ matrix.rust_target }}" ]; then
