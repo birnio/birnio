@@ -4,11 +4,15 @@
 #   build    — cross-compile release binaries for all 5 targets + SHA256 checksums
 #   release  — collect artefacts, create GitHub Release, attach all files
 #   winget   — update the Windows Package Manager manifest (vedantmgoyal9/winget-releaser)
-#   homebrew — bump the Homebrew tap formula (dawidd6/action-homebrew-bump-formula)
+#   homebrew — open a PR against the Homebrew cask tap (birnio/homebrew-birnio)
+#              that pins the new version + both macOS SHA256 checksums
 #
 # Required secrets:
 #   WINGET_TOKEN   — PAT with write access to the winget-pkgs community repo
-#   HOMEBREW_TOKEN — PAT with write access to birnio/homebrew-birnio
+#   HOMEBREW_TOKEN — fine-grained PAT scoped ONLY to birnio/homebrew-birnio with
+#                    "Contents: write" and "Pull requests: write". Used to push a
+#                    branch and open a PR against the tap's protected default
+#                    branch (we never push to the tap's main directly).
 #
 # SHA pins should be kept current; enable Dependabot for automatic updates.
 
@@ -255,20 +259,122 @@ jobs:
           token: ${{ secrets.WINGET_TOKEN }}
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Bump the Homebrew formula version in birnio/homebrew-birnio.
-  # Requires HOMEBREW_TOKEN secret: a PAT with write access to that tap repo.
+  # Open a PR against the Homebrew cask tap (birnio/homebrew-birnio) that pins
+  # the released version and both macOS SHA256 checksums.
+  #
+  # birnio/homebrew-birnio is a CASK tap, so we rewrite Casks/birnio.rb to the
+  # pinned shape (real version + arm/intel sha256) rather than bumping a formula.
+  #
+  # The tap's default branch is protected, so we never push to it directly:
+  # this job pushes a release branch to the tap and opens a PR via the gh CLI.
+  #
+  # Requires HOMEBREW_TOKEN secret: a fine-grained PAT scoped only to
+  # birnio/homebrew-birnio with "Contents: write" and "Pull requests: write".
   # ──────────────────────────────────────────────────────────────────────────
   homebrew:
-    name: Update Homebrew formula
+    name: Update Homebrew cask
     needs: release
     runs-on: ubuntu-latest
+    # This job touches no birnio/birnio contents; all writes go to the tap repo
+    # via HOMEBREW_TOKEN, so the default GITHUB_TOKEN needs no permissions here.
+    permissions: {}
     steps:
-      - name: Bump formula version in Homebrew tap
-        uses: dawidd6/action-homebrew-bump-formula@1446dca236b0440c6f02723a3f14f13be2c04ab0 # v3 (verify SHA)
+      # Derive the version (tag without the leading "v") and fetch the two macOS
+      # SHA256 values from the release's .sha256 assets. Each .sha256 file has the
+      # form "<hex>  <filename>"; we keep only the leading hex digest.
+      - name: Resolve version and macOS checksums
+        id: meta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          download() {
+            gh release download "$TAG" \
+              --repo "${{ github.repository }}" \
+              --pattern "$1" --output - 2>/dev/null
+          }
+
+          intel_sha="$(download 'birnio-x86_64-apple-darwin.sha256' | awk '{print $1}')"
+          arm_sha="$(download 'birnio-aarch64-apple-darwin.sha256' | awk '{print $1}')"
+
+          # Fail loudly rather than write a placeholder checksum into the cask.
+          for v in "$intel_sha" "$arm_sha"; do
+            if [[ ! "$v" =~ ^[0-9a-f]{64}$ ]]; then
+              echo "::error::Could not resolve a 64-char SHA256 from release assets (got '$v')."
+              exit 1
+            fi
+          done
+
+          echo "intel_sha=$intel_sha" >> "$GITHUB_OUTPUT"
+          echo "arm_sha=$arm_sha" >> "$GITHUB_OUTPUT"
+
+      # Check out the tap repo (not birnio/birnio) using the scoped tap token.
+      - name: Checkout Homebrew tap
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          # PAT with write access to the tap repository.
+          repository: birnio/homebrew-birnio
           token: ${{ secrets.HOMEBREW_TOKEN }}
-          # Homebrew tap name: owner/name without the "homebrew-" prefix.
-          # This corresponds to github.com/birnio/homebrew-birnio.
-          tap: birnio/birnio
-          formula: birnio
+          path: tap
+
+      # Rewrite Casks/birnio.rb to the pinned shape. Heredoc, not sed, so the
+      # whole file is deterministic regardless of its previous contents.
+      - name: Write pinned cask
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          ARM_SHA: ${{ steps.meta.outputs.arm_sha }}
+          INTEL_SHA: ${{ steps.meta.outputs.intel_sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p tap/Casks
+          cat > tap/Casks/birnio.rb <<EOF
+          cask "birnio" do
+            arch arm: "aarch64", intel: "x86_64"
+
+            version "${VERSION}"
+            sha256 arm: "${ARM_SHA}", intel: "${INTEL_SHA}"
+
+            url "https://github.com/birnio/birnio/releases/download/v#{version}/birnio-#{arch}-apple-darwin"
+          end
+          EOF
+          echo "----- Casks/birnio.rb -----"
+          cat tap/Casks/birnio.rb
+
+      # Push a branch to the tap and open a PR against its default branch.
+      # We never push to the tap's protected main directly.
+      - name: Open pull request against the tap
+        working-directory: tap
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TOKEN }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          branch="birnio-${VERSION}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # If nothing changed (re-run of the same tag), exit cleanly.
+          if git diff --quiet -- Casks/birnio.rb; then
+            echo "Cask already pinned to ${VERSION}; nothing to do."
+            exit 0
+          fi
+
+          git switch -C "$branch"
+          git add Casks/birnio.rb
+          git commit -m "birnio ${VERSION}"
+          git push --force-with-lease --set-upstream origin "$branch"
+
+          # Reuse an existing open PR for this branch if there is one.
+          if [ -z "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
+            gh pr create \
+              --title "birnio ${VERSION}" \
+              --body "Automated cask update for birnio ${VERSION}. Pins \`version\` and both macOS \`sha256\` checksums. Opened by the birnio/birnio release workflow." \
+              --base "$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name')" \
+              --head "$branch"
+          else
+            echo "An open PR for $branch already exists; updated its branch."
+          fi
