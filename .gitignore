@@ -3,3 +3,6 @@
 *.pdb
 .DS_Store
 .idea/
+
+# Claude Code agent worktrees (local scratch checkouts)
+.claude/worktrees/
