@@ -10,3 +10,6 @@ birnio-core = { path = "../birnio-core", version = "0.1" }
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["rt", "macros", "time"] }
+
+[dev-dependencies]
+serde_json.workspace = true

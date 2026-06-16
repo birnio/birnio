@@ -64,6 +64,7 @@ version = "0.1.0"
 dependencies = [
  "birnio-core",
  "reqwest",
+ "serde_json",
  "thiserror",
  "tokio",
 ]
