@@ -58,7 +58,7 @@ jobs:
       rust: ${{ steps.filter.outputs.rust }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Filter changed paths
         id: filter
@@ -101,11 +101,11 @@ jobs:
     steps:
       - name: Checkout repository
         if: needs.changes.outputs.rust == 'true'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Install Rust stable + rustfmt
         if: needs.changes.outputs.rust == 'true'
-        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+        uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # stable
         with:
           toolchain: stable
           components: rustfmt
@@ -125,7 +125,7 @@ jobs:
     steps:
       - name: Checkout repository
         if: needs.changes.outputs.rust == 'true'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Install GTK4 and libadwaita dev headers
         if: needs.changes.outputs.rust == 'true'
@@ -135,14 +135,14 @@ jobs:
 
       - name: Install Rust stable + clippy
         if: needs.changes.outputs.rust == 'true'
-        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+        uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # stable
         with:
           toolchain: stable
           components: clippy
 
       - name: Cache Cargo registry and build artefacts
         if: needs.changes.outputs.rust == 'true'
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.cargo/registry/index
@@ -167,11 +167,11 @@ jobs:
     steps:
       - name: Checkout repository
         if: needs.changes.outputs.rust == 'true'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Install Rust stable
         if: needs.changes.outputs.rust == 'true'
-        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+        uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # stable
         with:
           toolchain: stable
 
@@ -198,7 +198,7 @@ jobs:
     steps:
       - name: Checkout repository
         if: needs.changes.outputs.rust == 'true'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Install GTK4 and libadwaita dev headers
         if: needs.changes.outputs.rust == 'true'
@@ -209,14 +209,14 @@ jobs:
       # llvm-tools-preview is required by cargo-llvm-cov for instrumentation.
       - name: Install Rust stable + llvm-tools
         if: needs.changes.outputs.rust == 'true'
-        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+        uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # stable
         with:
           toolchain: stable
           components: llvm-tools-preview
 
       - name: Cache Cargo registry and build artefacts
         if: needs.changes.outputs.rust == 'true'
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.cargo/registry/index
@@ -297,7 +297,7 @@ jobs:
     steps:
       - name: Checkout repository
         if: needs.changes.outputs.rust == 'true'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       # ── System dependencies ─────────────────────────────────────────────
 
@@ -317,7 +317,7 @@ jobs:
       - name: Install GTK4 and libadwaita (Windows via MSYS2)
         if: needs.changes.outputs.rust == 'true' && runner.os == 'Windows'
         id: msys2
-        uses: msys2/setup-msys2@e9898307ac31d1a803454791be09ab9973336e1c # v2
+        uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 # v2
         with:
           msystem: UCRT64
           update: false
@@ -363,14 +363,14 @@ jobs:
 
       - name: Install Rust stable
         if: needs.changes.outputs.rust == 'true'
-        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+        uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # stable
         with:
           toolchain: stable
           targets: ${{ matrix.rust_target }}
 
       - name: Cache Cargo registry and build artefacts
         if: needs.changes.outputs.rust == 'true'
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.cargo/registry/index
