@@ -83,10 +83,12 @@ name = "birnio-storage"
 version = "0.1.0"
 dependencies = [
  "birnio-core",
+ "serde",
  "serde_json",
  "sqlx",
  "thiserror",
  "tokio",
+ "url",
  "uuid",
 ]
 
